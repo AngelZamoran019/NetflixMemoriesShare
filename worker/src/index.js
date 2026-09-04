@@ -43,9 +43,11 @@ function adminPage() {
 <title>Creador De Recuerdos — Publicador</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:#080808;color:#fff;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px}
-.card{width:min(560px,100%);background:#151515;border:1px solid #2b2b2b;border-radius:18px;padding:28px;box-shadow:0 20px 70px #0008}
+body{margin:0;min-height:100vh;background:#080808;color:#fff;font-family:Arial,sans-serif;padding:24px}
+.wrap{width:min(760px,100%);margin:0 auto}
+.card{background:#151515;border:1px solid #2b2b2b;border-radius:18px;padding:28px;box-shadow:0 20px 70px #0008}
 h1{margin:0 0 8px;font-size:28px}
+h2{margin:0;font-size:20px}
 p{color:#aaa;line-height:1.5}
 .drop{display:block;border:1px dashed #555;border-radius:14px;padding:28px;text-align:center;margin:22px 0;background:#101010;cursor:pointer}
 .drop input{width:100%;margin-top:14px}
@@ -54,10 +56,21 @@ button:disabled{opacity:.5;cursor:wait}
 .result{display:none;margin-top:22px;padding:16px;border-radius:12px;background:#0d2516;border:1px solid #245d35}
 .result a{display:block;color:#8cffaa;overflow-wrap:anywhere;margin-top:8px}
 .error{display:none;color:#ff8f8f;margin-top:14px}
-.small{font-size:12px;color:#777}
+.history{margin-top:24px}
+.history-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.refresh{width:auto;padding:9px 13px;background:#292929;color:#fff;font-size:12px}
+.history-list{display:grid;gap:10px}
+.history-item{background:#101010;border:1px solid #292929;border-radius:12px;padding:14px}
+.history-name{font-weight:700;overflow-wrap:anywhere}
+.history-date{font-size:12px;color:#777;margin-top:5px}
+.history-links{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.history-links a{display:block;text-align:center;padding:9px;border-radius:8px;background:#202020;color:#fff;text-decoration:none;font-size:12px}
+.empty,.loading{color:#777;font-size:14px;padding:12px 0}
+@media(max-width:560px){.history-links{grid-template-columns:1fr}.card{padding:20px}}
 </style>
 </head>
 <body>
+<div class="wrap">
 <main class="card">
 <h1>Creador De Recuerdos</h1>
 <p>Publicador de experiencias HTML. Selecciona el HTML exportado para generar automáticamente una vista previa con marca de agua y una vista final limpia.</p>
@@ -71,13 +84,52 @@ button:disabled{opacity:.5;cursor:wait}
 <div>Demo con marca de agua:</div><a id="demo" target="_blank" rel="noopener"></a>
 <div style="margin-top:12px">Vista final:</div><a id="view" target="_blank" rel="noopener"></a>
 </section>
-<p class="small">La publicación es directa por ahora. Más adelante podemos agregar una capa de protección.</p>
 </main>
+
+<section class="card history">
+<div class="history-head"><h2>Historial de proyectos publicados</h2><button id="refresh" class="refresh" type="button">ACTUALIZAR</button></div>
+<div id="historyList" class="history-list"><div class="loading">Cargando historial...</div></div>
+</section>
+</div>
 <script>
 const form=document.getElementById('form');
 const button=document.getElementById('button');
 const error=document.getElementById('error');
 const result=document.getElementById('result');
+const historyList=document.getElementById('historyList');
+const refresh=document.getElementById('refresh');
+
+function escapeText(value){
+ return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+}
+
+async function loadHistory(){
+ historyList.innerHTML='<div class="loading">Cargando historial...</div>';
+ try{
+  const r=await fetch('/api/history',{cache:'no-store'});
+  const body=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(body.error||'No fue posible cargar el historial.');
+  if(!body.projects?.length){
+   historyList.innerHTML='<div class="empty">Todavía no hay proyectos publicados.</div>';
+   return;
+  }
+  historyList.innerHTML=body.projects.map(project=>{
+   const name=escapeText(project.name||'Proyecto HTML');
+   const date=project.createdAt?new Date(project.createdAt).toLocaleString('es-MX'):'Fecha no disponible';
+   return `<article class="history-item">
+    <div class="history-name">${name}</div>
+    <div class="history-date">Publicado: ${escapeText(date)}</div>
+    <div class="history-links">
+     <a href="${project.demo}" target="_blank" rel="noopener">VER DEMO</a>
+     <a href="${project.view}" target="_blank" rel="noopener">VER FINAL</a>
+    </div>
+   </article>`;
+  }).join('');
+ }catch(err){
+  historyList.innerHTML='<div class="empty">'+escapeText(err.message)+'</div>';
+ }
+}
+
 form.addEventListener('submit',async(e)=>{
  e.preventDefault(); error.style.display='none'; result.style.display='none';
  const file=document.getElementById('file').files[0];
@@ -90,9 +142,12 @@ form.addEventListener('submit',async(e)=>{
   if(!r.ok) throw new Error(body.error||'No fue posible publicar el HTML.');
   document.getElementById('demo').href=body.demo; document.getElementById('demo').textContent=body.demo;
   document.getElementById('view').href=body.view; document.getElementById('view').textContent=body.view;
-  result.style.display='block'; form.reset();
+  result.style.display='block'; form.reset(); loadHistory();
  }catch(err){error.textContent=err.message; error.style.display='block'}finally{button.disabled=false;button.textContent='PUBLICAR HTML'}
 });
+
+refresh.addEventListener('click',loadHistory);
+loadHistory();
 </script>
 </body></html>`;
 }
@@ -100,13 +155,11 @@ form.addEventListener('submit',async(e)=>{
 function addWatermark(html) {
   const watermark = `
 <style id="recuerdos-watermark-style">
-.recuerdos-watermark-layer{position:fixed;inset:0;z-index:2147483647;pointer-events:none;overflow:hidden}
-.recuerdos-watermark-layer span{position:absolute;left:50%;width:180%;text-align:center;transform:translateX(-50%) rotate(-24deg);font:800 clamp(26px,8vw,76px)/1 Arial,sans-serif;letter-spacing:.08em;color:rgba(255,255,255,.16);text-shadow:0 2px 8px rgba(0,0,0,.3);white-space:nowrap}
-.recuerdos-watermark-layer span:nth-child(1){top:8%}.recuerdos-watermark-layer span:nth-child(2){top:28%}.recuerdos-watermark-layer span:nth-child(3){top:48%}.recuerdos-watermark-layer span:nth-child(4){top:68%}.recuerdos-watermark-layer span:nth-child(5){top:88%}
+.recuerdos-watermark-layer{position:fixed;inset:-15%;width:130%;height:130%;z-index:2147483647;pointer-events:none;overflow:hidden;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(9,1fr);align-items:center;justify-items:center;transform:rotate(-24deg);transform-origin:center center}
+.recuerdos-watermark-layer span{font:700 14px/1 Arial,sans-serif;letter-spacing:.05em;color:rgba(255,255,255,.18);white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.2)}
+@media(min-width:700px){.recuerdos-watermark-layer span{font-size:16px}}
 </style>
-<div class="recuerdos-watermark-layer" aria-hidden="true">
-<span>VISTA PREVIA</span><span>VISTA PREVIA</span><span>VISTA PREVIA</span><span>VISTA PREVIA</span><span>VISTA PREVIA</span>
-</div>`;
+<div class="recuerdos-watermark-layer" aria-hidden="true">${Array.from({length:45},()=>'<span>Dangels Print Studio</span>').join('')}</div>`;
   if (/<\/body\s*>/i.test(html)) return html.replace(/<\/body\s*>/i, `${watermark}</body>`);
   return `${html}${watermark}`;
 }
@@ -130,7 +183,10 @@ async function upload(request, env) {
       contentType: "text/html; charset=utf-8",
       cacheControl: "public, max-age=31536000, immutable",
     },
-    customMetadata: { originalName: escapeHtml(file.name) },
+    customMetadata: {
+      originalName: file.name,
+      createdAt: new Date().toISOString(),
+    },
   });
 
   const base = new URL(request.url).origin;
@@ -139,6 +195,34 @@ async function upload(request, env) {
     demo: `${base}/demo/${id}`,
     view: `${base}/view/${id}`,
   }, 201);
+}
+
+async function history(request, env) {
+  if (request.method !== "GET") return json({ error: "Método no permitido." }, 405);
+  if (!env.RECUERDOS) return json({ error: "El almacenamiento todavía no está configurado." }, 503);
+
+  const listed = await env.RECUERDOS.list({
+    prefix: HTML_PREFIX,
+    limit: 1000,
+    include: ["customMetadata"],
+  });
+
+  const base = new URL(request.url).origin;
+  const projects = listed.objects
+    .map(object => {
+      const id = object.key.slice(HTML_PREFIX.length).replace(/\.html$/i, "");
+      return {
+        id,
+        name: object.customMetadata?.originalName || "Proyecto HTML",
+        createdAt: object.customMetadata?.createdAt || object.uploaded?.toISOString?.() || null,
+        demo: `${base}/demo/${id}`,
+        view: `${base}/view/${id}`,
+      };
+    })
+    .filter(project => validId(project.id))
+    .sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+  return json({ projects, truncated: listed.truncated });
 }
 
 async function serveMemory(mode, id, env) {
@@ -164,6 +248,7 @@ export default {
 
     if (path === "/" && request.method === "GET") return page(adminPage());
     if (path === "/api/upload") return upload(request, env);
+    if (path === "/api/history" && request.method === "GET") return history(request, env);
 
     const match = path.match(/^\/(demo|view)\/([^/]+)$/);
     if (match && request.method === "GET") return serveMemory(match[1], match[2], env);
