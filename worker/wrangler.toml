@@ -1,0 +1,7 @@
+name = "netflix-memories-share"
+main = "src/index.js"
+compatibility_date = "2026-09-04"
+
+[[r2_buckets]]
+binding = "RECUERDOS"
+bucket_name = "netflix-memories"
