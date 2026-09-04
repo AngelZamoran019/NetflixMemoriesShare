@@ -84,7 +84,6 @@ button:disabled{opacity:.5;cursor:wait}
 <div style="margin-top:12px">Vista final:</div><a id="view" target="_blank" rel="noopener"></a>
 </section>
 </main>
-
 <section class="card history">
 <div class="history-head"><h2>Historial de proyectos publicados</h2><button id="refresh" class="refresh" type="button">ACTUALIZAR</button></div>
 <div id="historyList" class="history-list"><div class="loading">Cargando historial...</div></div>
@@ -97,43 +96,25 @@ const error=document.getElementById('error');
 const result=document.getElementById('result');
 const historyList=document.getElementById('historyList');
 const refresh=document.getElementById('refresh');
-
-function escapeText(value){
- return String(value??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]));
-}
-
+function escapeText(value){return String(value??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]));}
 async function loadHistory(){
  historyList.innerHTML='<div class="loading">Cargando historial...</div>';
  try{
   const r=await fetch('/api/history',{cache:'no-store'});
   const body=await r.json().catch(()=>({}));
   if(!r.ok) throw new Error(body.error||'No fue posible cargar el historial.');
-  if(!body.projects?.length){
-   historyList.innerHTML='<div class="empty">Todavía no hay proyectos publicados.</div>';
-   return;
-  }
+  if(!body.projects?.length){historyList.innerHTML='<div class="empty">Todavía no hay proyectos publicados.</div>';return;}
   historyList.innerHTML=body.projects.map(project=>{
    const name=escapeText(project.name||'Proyecto HTML');
    const date=project.createdAt?new Date(project.createdAt).toLocaleString('es-MX'):'Fecha no disponible';
-   const demo=escapeText(project.demo);
-   const view=escapeText(project.view);
-   return '<article class="history-item">' +
-    '<div class="history-name">' + name + '</div>' +
-    '<div class="history-date">Publicado: ' + escapeText(date) + '</div>' +
-    '<div class="history-links">' +
-    '<a href="' + demo + '" target="_blank" rel="noopener">VER DEMO</a>' +
-    '<a href="' + view + '" target="_blank" rel="noopener">VER FINAL</a>' +
-    '</div></article>';
+   const demo=escapeText(project.demo); const view=escapeText(project.view);
+   return '<article class="history-item">' + '<div class="history-name">' + name + '</div>' + '<div class="history-date">Publicado: ' + escapeText(date) + '</div>' + '<div class="history-links">' + '<a href="' + demo + '" target="_blank" rel="noopener">VER DEMO</a>' + '<a href="' + view + '" target="_blank" rel="noopener">VER FINAL</a>' + '</div></article>';
   }).join('');
- }catch(err){
-  historyList.innerHTML='<div class="empty">'+escapeText(err.message)+'</div>';
- }
+ }catch(err){historyList.innerHTML='<div class="empty">'+escapeText(err.message)+'</div>';}
 }
-
 form.addEventListener('submit',async(e)=>{
  e.preventDefault(); error.style.display='none'; result.style.display='none';
- const file=document.getElementById('file').files[0];
- if(!file){return}
+ const file=document.getElementById('file').files[0]; if(!file)return;
  button.disabled=true; button.textContent='PUBLICANDO...';
  try{
   const data=new FormData(); data.append('html',file);
@@ -145,9 +126,7 @@ form.addEventListener('submit',async(e)=>{
   result.style.display='block'; form.reset(); loadHistory();
  }catch(err){error.textContent=err.message; error.style.display='block'}finally{button.disabled=false;button.textContent='PUBLICAR HTML'}
 });
-
-refresh.addEventListener('click',loadHistory);
-loadHistory();
+refresh.addEventListener('click',loadHistory); loadHistory();
 </script>
 </body></html>`;
 }
@@ -155,40 +134,30 @@ loadHistory();
 function addWatermark(html) {
   const watermark = `
 <style id="recuerdos-watermark-style">
-.recuerdos-watermark-layer{position:fixed;inset:-20%;width:140%;height:140%;z-index:2147483647;pointer-events:none;overflow:hidden;display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(18,1fr);align-items:center;justify-items:center;transform:rotate(-24deg);transform-origin:center center}
-.recuerdos-watermark-layer span{font:700 12px/1 Arial,sans-serif;letter-spacing:.05em;color:rgba(255,255,255,.18);white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.2)}
-@media(min-width:700px){.recuerdos-watermark-layer span{font-size:14px}}
+.recuerdos-watermark-layer{position:fixed;inset:-25%;width:150%;height:150%;z-index:2147483647;pointer-events:none;overflow:hidden;display:grid;grid-template-columns:repeat(15,1fr);grid-template-rows:repeat(24,1fr);align-items:center;justify-items:center;transform:rotate(-24deg);transform-origin:center center}
+.recuerdos-watermark-layer span{font:700 10px/1 Arial,sans-serif;letter-spacing:.04em;color:rgba(255,255,255,.18);white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.2)}
+@media(min-width:700px){.recuerdos-watermark-layer span{font-size:12px}}
 </style>
-<div class="recuerdos-watermark-layer" aria-hidden="true">${Array.from({length:180},()=>'<span>Dangels Print Studio</span>').join('')}</div>`;
-  if (/<\\/body\\s*>/i.test(html)) return html.replace(/<\\/body\\s*>/i, `${watermark}</body>`);
+<div class="recuerdos-watermark-layer" aria-hidden="true">${Array.from({length:360},()=>'<span>Dangels Print Studio</span>').join('')}</div>`;
+  if (/<\/body\s*>/i.test(html)) return html.replace(/<\/body\s*>/i, `${watermark}</body>`);
   return `${html}${watermark}`;
 }
 
 async function upload(request, env) {
   if (request.method !== "POST") return json({ error: "Método no permitido." }, 405);
   if (!env.RECUERDOS) return json({ error: "El almacenamiento todavía no está configurado." }, 503);
-
   const form = await request.formData();
   const file = form.get("html");
   if (!(file instanceof File)) return json({ error: "Debes seleccionar un archivo HTML." }, 400);
   if (!/\.html?$/i.test(file.name)) return json({ error: "Solo se permiten archivos .html o .htm." }, 400);
   if (file.size > MAX_HTML_BYTES) return json({ error: "El HTML supera el límite de 10 MB." }, 413);
-
   const html = await file.text();
   if (!html.trim()) return json({ error: "El archivo HTML está vacío." }, 400);
-
   const id = crypto.randomUUID().replaceAll("-", "");
   await env.RECUERDOS.put(`${HTML_PREFIX}${id}.html`, html, {
-    httpMetadata: {
-      contentType: "text/html; charset=utf-8",
-      cacheControl: "public, max-age=31536000, immutable",
-    },
-    customMetadata: {
-      originalName: file.name,
-      createdAt: new Date().toISOString(),
-    },
+    httpMetadata: { contentType: "text/html; charset=utf-8", cacheControl: "public, max-age=31536000, immutable" },
+    customMetadata: { originalName: file.name, createdAt: new Date().toISOString() },
   });
-
   const base = new URL(request.url).origin;
   return json({ id, demo: `${base}/demo/${id}`, view: `${base}/view/${id}` }, 201);
 }
@@ -196,28 +165,12 @@ async function upload(request, env) {
 async function history(request, env) {
   if (request.method !== "GET") return json({ error: "Método no permitido." }, 405);
   if (!env.RECUERDOS) return json({ error: "El almacenamiento todavía no está configurado." }, 503);
-
-  const listed = await env.RECUERDOS.list({
-    prefix: HTML_PREFIX,
-    limit: 1000,
-    include: ["customMetadata"],
-  });
-
+  const listed = await env.RECUERDOS.list({ prefix: HTML_PREFIX, limit: 1000, include: ["customMetadata"] });
   const base = new URL(request.url).origin;
-  const projects = listed.objects
-    .map(object => {
-      const id = object.key.slice(HTML_PREFIX.length).replace(/\.html$/i, "");
-      return {
-        id,
-        name: object.customMetadata?.originalName || "Proyecto HTML",
-        createdAt: object.customMetadata?.createdAt || object.uploaded?.toISOString?.() || null,
-        demo: `${base}/demo/${id}`,
-        view: `${base}/view/${id}`,
-      };
-    })
-    .filter(project => validId(project.id))
-    .sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-
+  const projects = listed.objects.map(object => {
+    const id = object.key.slice(HTML_PREFIX.length).replace(/\.html$/i, "");
+    return { id, name: object.customMetadata?.originalName || "Proyecto HTML", createdAt: object.customMetadata?.createdAt || object.uploaded?.toISOString?.() || null, demo: `${base}/demo/${id}`, view: `${base}/view/${id}` };
+  }).filter(project => validId(project.id)).sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   return json({ projects, truncated: listed.truncated });
 }
 
@@ -225,30 +178,20 @@ async function serveMemory(mode, id, env) {
   if (!validId(id)) return new Response("Recuerdo no encontrado.", { status: 404 });
   const object = await env.RECUERDOS.get(`${HTML_PREFIX}${id}.html`);
   if (!object) return new Response("Recuerdo no encontrado.", { status: 404 });
-
   const html = await object.text();
   const output = mode === "demo" ? addWatermark(html) : html;
-  return new Response(output, {
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "public, max-age=300",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
+  return new Response(output, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300", "X-Content-Type-Options": "nosniff" } });
 }
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
-
     if (path === "/" && request.method === "GET") return page(adminPage());
     if (path === "/api/upload") return upload(request, env);
     if (path === "/api/history" && request.method === "GET") return history(request, env);
-
     const match = path.match(/^\/(demo|view)\/([^/]+)$/);
     if (match && request.method === "GET") return serveMemory(match[1], match[2], env);
-
     return new Response("Ruta no encontrada.", { status: 404 });
   },
 };
