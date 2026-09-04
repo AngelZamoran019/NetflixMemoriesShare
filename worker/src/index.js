@@ -14,7 +14,10 @@ function json(data, status = 200) {
 function page(html, status = 200) {
   return new Response(html, {
     status,
-    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
   });
 }
 
@@ -39,7 +42,19 @@ function adminPage() {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Creador De Recuerdos — Publicador</title>
 <style>
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#080808;color:#fff;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px}.card{width:min(560px,100%);background:#151515;border:1px solid #2b2b2b;border-radius:18px;padding:28px;box-shadow:0 20px 70px #0008}h1{margin:0 0 8px;font-size:28px}p{color:#aaa;line-height:1.5}.drop{display:block;border:1px dashed #555;border-radius:14px;padding:28px;text-align:center;margin:22px 0;background:#101010}.drop input{width:100%;margin-top:14px}label{display:block;font-size:14px;color:#bbb;margin-bottom:7px}input[type=password]{width:100%;padding:13px;border-radius:10px;border:1px solid #444;background:#0c0c0c;color:#fff}button{width:100%;padding:14px;border:0;border-radius:10px;background:#fff;color:#000;font-weight:800;cursor:pointer}button:disabled{opacity:.5;cursor:wait}.result{display:none;margin-top:22px;padding:16px;border-radius:12px;background:#0d2516;border:1px solid #245d35}.result a{display:block;color:#8cffaa;overflow-wrap:anywhere;margin-top:8px}.error{display:none;color:#ff8f8f;margin-top:14px}.small{font-size:12px;color:#777}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:#080808;color:#fff;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px}
+.card{width:min(560px,100%);background:#151515;border:1px solid #2b2b2b;border-radius:18px;padding:28px;box-shadow:0 20px 70px #0008}
+h1{margin:0 0 8px;font-size:28px}
+p{color:#aaa;line-height:1.5}
+.drop{display:block;border:1px dashed #555;border-radius:14px;padding:28px;text-align:center;margin:22px 0;background:#101010;cursor:pointer}
+.drop input{width:100%;margin-top:14px}
+button{width:100%;padding:14px;border:0;border-radius:10px;background:#fff;color:#000;font-weight:800;cursor:pointer}
+button:disabled{opacity:.5;cursor:wait}
+.result{display:none;margin-top:22px;padding:16px;border-radius:12px;background:#0d2516;border:1px solid #245d35}
+.result a{display:block;color:#8cffaa;overflow-wrap:anywhere;margin-top:8px}
+.error{display:none;color:#ff8f8f;margin-top:14px}
+.small{font-size:12px;color:#777}
 </style>
 </head>
 <body>
@@ -47,8 +62,6 @@ function adminPage() {
 <h1>Creador De Recuerdos</h1>
 <p>Publicador de experiencias HTML. Selecciona el HTML exportado para generar automáticamente una vista previa con marca de agua y una vista final limpia.</p>
 <form id="form">
-<label>Clave de publicación</label>
-<input id="token" type="password" autocomplete="off" required>
 <label class="drop">Selecciona tu archivo HTML<input id="file" type="file" accept=".html,.htm,text/html" required></label>
 <button id="button" type="submit">PUBLICAR HTML</button>
 </form>
@@ -58,7 +71,7 @@ function adminPage() {
 <div>Demo con marca de agua:</div><a id="demo" target="_blank" rel="noopener"></a>
 <div style="margin-top:12px">Vista final:</div><a id="view" target="_blank" rel="noopener"></a>
 </section>
-<p class="small">La clave nunca se guarda en el HTML ni en GitHub.</p>
+<p class="small">La publicación es directa por ahora. Más adelante podemos agregar una capa de protección.</p>
 </main>
 <script>
 const form=document.getElementById('form');
@@ -67,12 +80,12 @@ const error=document.getElementById('error');
 const result=document.getElementById('result');
 form.addEventListener('submit',async(e)=>{
  e.preventDefault(); error.style.display='none'; result.style.display='none';
- const file=document.getElementById('file').files[0]; const token=document.getElementById('token').value;
+ const file=document.getElementById('file').files[0];
  if(!file){return}
  button.disabled=true; button.textContent='PUBLICANDO...';
  try{
   const data=new FormData(); data.append('html',file);
-  const r=await fetch('/api/upload',{method:'POST',headers:{'Authorization':'Bearer '+token},body:data});
+  const r=await fetch('/api/upload',{method:'POST',body:data});
   const body=await r.json().catch(()=>({}));
   if(!r.ok) throw new Error(body.error||'No fue posible publicar el HTML.');
   document.getElementById('demo').href=body.demo; document.getElementById('demo').textContent=body.demo;
@@ -100,13 +113,7 @@ function addWatermark(html) {
 
 async function upload(request, env) {
   if (request.method !== "POST") return json({ error: "Método no permitido." }, 405);
-  if (!env.PUBLISH_TOKEN) return json({ error: "El publicador todavía no está configurado." }, 503);
-
-  const authorization = request.headers.get("Authorization") || "";
-  const expected = `Bearer ${env.PUBLISH_TOKEN}`;
-  if (authorization.length !== expected.length || authorization !== expected) {
-    return json({ error: "Clave de publicación incorrecta." }, 401);
-  }
+  if (!env.RECUERDOS) return json({ error: "El almacenamiento todavía no está configurado." }, 503);
 
   const form = await request.formData();
   const file = form.get("html");
@@ -119,12 +126,19 @@ async function upload(request, env) {
 
   const id = crypto.randomUUID().replaceAll("-", "");
   await env.RECUERDOS.put(`${HTML_PREFIX}${id}.html`, html, {
-    httpMetadata: { contentType: "text/html; charset=utf-8", cacheControl: "public, max-age=31536000, immutable" },
+    httpMetadata: {
+      contentType: "text/html; charset=utf-8",
+      cacheControl: "public, max-age=31536000, immutable",
+    },
     customMetadata: { originalName: escapeHtml(file.name) },
   });
 
   const base = new URL(request.url).origin;
-  return json({ id, demo: `${base}/demo/${id}`, view: `${base}/view/${id}` }, 201);
+  return json({
+    id,
+    demo: `${base}/demo/${id}`,
+    view: `${base}/view/${id}`,
+  }, 201);
 }
 
 async function serveMemory(mode, id, env) {
