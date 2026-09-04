@@ -100,7 +100,7 @@ const historyList=document.getElementById('historyList');
 const refresh=document.getElementById('refresh');
 
 function escapeText(value){
- return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+ return String(value??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]));
 }
 
 async function loadHistory(){
@@ -116,14 +116,15 @@ async function loadHistory(){
   historyList.innerHTML=body.projects.map(project=>{
    const name=escapeText(project.name||'Proyecto HTML');
    const date=project.createdAt?new Date(project.createdAt).toLocaleString('es-MX'):'Fecha no disponible';
-   return `<article class="history-item">
-    <div class="history-name">${name}</div>
-    <div class="history-date">Publicado: ${escapeText(date)}</div>
-    <div class="history-links">
-     <a href="${project.demo}" target="_blank" rel="noopener">VER DEMO</a>
-     <a href="${project.view}" target="_blank" rel="noopener">VER FINAL</a>
-    </div>
-   </article>`;
+   const demo=escapeText(project.demo);
+   const view=escapeText(project.view);
+   return '<article class="history-item">' +
+    '<div class="history-name">' + name + '</div>' +
+    '<div class="history-date">Publicado: ' + escapeText(date) + '</div>' +
+    '<div class="history-links">' +
+    '<a href="' + demo + '" target="_blank" rel="noopener">VER DEMO</a>' +
+    '<a href="' + view + '" target="_blank" rel="noopener">VER FINAL</a>' +
+    '</div></article>';
   }).join('');
  }catch(err){
   historyList.innerHTML='<div class="empty">'+escapeText(err.message)+'</div>';
