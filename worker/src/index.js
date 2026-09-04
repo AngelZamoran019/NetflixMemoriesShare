@@ -11,9 +11,8 @@ function json(data, status = 200) {
   });
 }
 
-function page(html, status = 200) {
+function page(html) {
   return new Response(html, {
-    status,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store",
@@ -156,12 +155,12 @@ loadHistory();
 function addWatermark(html) {
   const watermark = `
 <style id="recuerdos-watermark-style">
-.recuerdos-watermark-layer{position:fixed;inset:-15%;width:130%;height:130%;z-index:2147483647;pointer-events:none;overflow:hidden;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(9,1fr);align-items:center;justify-items:center;transform:rotate(-24deg);transform-origin:center center}
-.recuerdos-watermark-layer span{font:700 14px/1 Arial,sans-serif;letter-spacing:.05em;color:rgba(255,255,255,.18);white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.2)}
-@media(min-width:700px){.recuerdos-watermark-layer span{font-size:16px}}
+.recuerdos-watermark-layer{position:fixed;inset:-20%;width:140%;height:140%;z-index:2147483647;pointer-events:none;overflow:hidden;display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(18,1fr);align-items:center;justify-items:center;transform:rotate(-24deg);transform-origin:center center}
+.recuerdos-watermark-layer span{font:700 12px/1 Arial,sans-serif;letter-spacing:.05em;color:rgba(255,255,255,.18);white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.2)}
+@media(min-width:700px){.recuerdos-watermark-layer span{font-size:14px}}
 </style>
-<div class="recuerdos-watermark-layer" aria-hidden="true">${Array.from({length:45},()=>'<span>Dangels Print Studio</span>').join('')}</div>`;
-  if (/<\/body\s*>/i.test(html)) return html.replace(/<\/body\s*>/i, `${watermark}</body>`);
+<div class="recuerdos-watermark-layer" aria-hidden="true">${Array.from({length:180},()=>'<span>Dangels Print Studio</span>').join('')}</div>`;
+  if (/<\\/body\\s*>/i.test(html)) return html.replace(/<\\/body\\s*>/i, `${watermark}</body>`);
   return `${html}${watermark}`;
 }
 
@@ -191,11 +190,7 @@ async function upload(request, env) {
   });
 
   const base = new URL(request.url).origin;
-  return json({
-    id,
-    demo: `${base}/demo/${id}`,
-    view: `${base}/view/${id}`,
-  }, 201);
+  return json({ id, demo: `${base}/demo/${id}`, view: `${base}/view/${id}` }, 201);
 }
 
 async function history(request, env) {
